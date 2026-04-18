@@ -4,6 +4,7 @@ import type { AppConfig } from "../config.ts";
 import { extractCommitment } from "./extractor.ts";
 import { PromiseRepo } from "../storage/promise-repo.ts";
 import { IMessageSender } from "../imessage/sender.ts";
+import { ChatDirectory } from "../imessage/chat-directory.ts";
 import { parseUserCommand } from "../commands/user-commands.ts";
 import {
   formatCapture,
@@ -18,6 +19,7 @@ export class AgentRouter {
     private readonly config: AppConfig,
     private readonly repo: PromiseRepo,
     private readonly sender: IMessageSender,
+    private readonly chatDirectory: ChatDirectory,
   ) {}
 
   async handleMessage(message: Message) {
@@ -52,8 +54,11 @@ export class AgentRouter {
       id: crypto.randomUUID(),
       sourceMessageGuid: message.guid,
       sourceChatId: message.chatId,
-      sourceChatName: null,
-      counterparty: message.senderName ?? message.sender,
+      sourceChatName: this.chatDirectory.getName(message.chatId),
+      counterparty:
+        this.chatDirectory.getName(message.chatId) ??
+        message.senderName ??
+        message.sender,
       commitmentText: message.text,
       normalizedAction: candidate.action,
       dueAt: candidate.dueAt?.toISOString() ?? null,
