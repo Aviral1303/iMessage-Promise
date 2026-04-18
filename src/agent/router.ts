@@ -107,13 +107,35 @@ export class AgentRouter {
       case "help": {
         await this.sender.send(
           this.config.ownerChat,
-          "[Kept] Try: show open promises | done abc123 | snooze 2h abc123 | draft update abc123 | send it abc123",
+          "[Kept] Try: show open promises | why abc123 | ignore abc123 | done abc123 | snooze 2h abc123 | draft update abc123 | send it abc123",
+        );
+        return;
+      }
+
+      case "why": {
+        const record = await this.requirePromise(command.promiseRef);
+        if (!record) return;
+        await this.sender.send(
+          this.config.ownerChat,
+          `[Kept] ${shortId(record.id)} because you said: "${record.commitmentText}"`,
+        );
+        return;
+      }
+
+      case "ignore": {
+        const record = await this.requirePromise(command.promiseRef);
+        if (!record) return;
+        this.repo.updateStatus(record.id, "dismissed");
+        this.repo.addEvent(record.id, "dismissed");
+        await this.sender.send(
+          this.config.ownerChat,
+          `[Kept] Ignored ${shortId(record.id)}.`,
         );
         return;
       }
 
       case "done": {
-        const record = this.resolvePromise(command.promiseRef);
+        const record = await this.requirePromise(command.promiseRef);
         if (!record) return;
         this.repo.updateStatus(record.id, "done");
         this.repo.addEvent(record.id, "done");
@@ -125,7 +147,7 @@ export class AgentRouter {
       }
 
       case "draft_update": {
-        const record = this.resolvePromise(command.promiseRef);
+        const record = await this.requirePromise(command.promiseRef);
         if (!record) return;
         const draft = `Hey ${record.counterparty}, quick update: I am still on ${record.normalizedAction}. I will follow up soon.`;
         this.repo.saveDraft(record.id, draft);
@@ -135,7 +157,7 @@ export class AgentRouter {
       }
 
       case "send_it": {
-        const record = this.resolvePromise(command.promiseRef);
+        const record = await this.requirePromise(command.promiseRef);
         if (!record || !record.draftedReply) return;
         await this.sender.send(record.sourceChatId, record.draftedReply);
         this.repo.updateStatus(record.id, "closed_loop");
@@ -148,7 +170,7 @@ export class AgentRouter {
       }
 
       case "snooze": {
-        const record = this.resolvePromise(command.promiseRef);
+        const record = await this.requirePromise(command.promiseRef);
         if (!record) return;
         const dueAt = chrono.parseDate(command.durationText, new Date(), {
           forwardDate: true,
@@ -172,8 +194,15 @@ export class AgentRouter {
         return;
       }
 
-      case "unknown":
+      case "unknown": {
+        if (/^(show|done|why|ignore|draft|send|snooze|help)/i.test(text)) {
+          await this.sender.send(
+            this.config.ownerChat,
+            "[Kept] Bad command. Reply `help`.",
+          );
+        }
         return;
+      }
     }
   }
 
@@ -192,5 +221,18 @@ export class AgentRouter {
       .find((item) => item.id.startsWith(promiseRef));
 
     return match ?? null;
+  }
+
+  private async requirePromise(promiseRef?: string) {
+    const record = this.resolvePromise(promiseRef);
+    if (record) {
+      return record;
+    }
+
+    await this.sender.send(
+      this.config.ownerChat,
+      "[Kept] No matching promise. Try `show open promises`.",
+    );
+    return null;
   }
 }

@@ -1,6 +1,8 @@
 export type UserCommand =
   | { kind: "show_open" }
   | { kind: "help" }
+  | { kind: "why"; promiseRef?: string }
+  | { kind: "ignore"; promiseRef?: string }
   | { kind: "done"; promiseRef?: string }
   | { kind: "draft_update"; promiseRef?: string }
   | { kind: "send_it"; promiseRef?: string }
@@ -16,6 +18,16 @@ export function parseUserCommand(text: string): UserCommand {
 
   if (trimmed === "help") {
     return { kind: "help" };
+  }
+
+  const why = trimmed.match(/^why(?:\s+([a-z0-9-]+))?$/i);
+  if (why) {
+    return { kind: "why", promiseRef: why[1] };
+  }
+
+  const ignore = trimmed.match(/^ignore(?:\s+([a-z0-9-]+))?$/i);
+  if (ignore) {
+    return { kind: "ignore", promiseRef: ignore[1] };
   }
 
   const done = trimmed.match(/^done(?:\s+([a-z0-9-]+))?$/i);

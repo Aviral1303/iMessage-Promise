@@ -22,4 +22,18 @@ describe("parseUserCommand", () => {
       kind: "show_open",
     });
   });
+
+  test("parses why", () => {
+    expect(parseUserCommand("why abc123")).toEqual({
+      kind: "why",
+      promiseRef: "abc123",
+    });
+  });
+
+  test("parses ignore", () => {
+    expect(parseUserCommand("ignore abc123")).toEqual({
+      kind: "ignore",
+      promiseRef: "abc123",
+    });
+  });
 });
